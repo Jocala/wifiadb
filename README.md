@@ -23,30 +23,20 @@ restores the switch but not the port.
 
 ## Why an app, and why it works this way
 
-Two routes were evaluated.
+No normal app can set this flag directly. `IAdbService` is `@hide`/`@SystemApi`
+behind `MANAGE_DEBUGGING` (`signature|privileged` — platform key or priv-app
+only), and `persist.adb.tls_server.enable` is `system_adbd_prop`, writable only
+by `system_server`/`init` behind a `neverallow`. On these devices platform
+signing and `su` are both closed on several independent axes, so there is no
+root and no privileged route.
 
-**Writing `Settings.Global adb_wifi_enabled` directly.** This looks closed at
-first: the protection level is
-`signature|privileged|development|role|installer` and the framework comments
-call it "Not for use by third-party applications", while the property it
-shadows (`persist.adb.tls_server.enable`) is `system_adbd_prop`, writable only
-by `system_server`/`init` behind a `neverallow`. But that permission *is*
-grantable from a host with `pm grant WRITE_SECURE_SETTINGS`, so the app can set
-the flag itself.
+That leaves the Settings UI, which is the only writer the ROM permits — and the
+Wireless debugging switch is a real UI control, so an `AccessibilityService`
+can operate it.
 
-That route was implemented, and it does not work reliably. Writing the setting
-is not sufficient in practice: the write has to land *after* the ROM's clobber
-and *before* anything re-reads it, and a broadcast-driven attempt to find that
-window turned out to be non-deterministic across cold boots on the test fleet.
-Granting `WRITE_SECURE_SETTINGS` also means re-granting after reinstalls, and
-`pm grant` returns `0` whether or not it granted anything, so the state is easy
-to get quietly wrong. It is not what ships.
-
-**Tapping the Quick Settings tile.** This is what ships. The Wireless debugging
-switch is a real UI control, and an `AccessibilityService` is allowed to
-operate that UI. The app opens Quick Settings, finds the tile, taps it once,
-then reads the setting back to confirm the tap actually took. It is idempotent:
-if the switch is already on, it does nothing and returns to the launcher.
+The app opens Quick Settings, finds the tile, taps it once, then reads the
+setting back to confirm the tap actually took. It is idempotent: if the switch
+is already on, it does nothing and returns to the launcher.
 
 The trigger is the accessibility service's own `onServiceConnected`. The system
 binds enabled accessibility services early at boot — earlier than
@@ -104,7 +94,8 @@ Android 16).
    `settings put` — the lock method lives in the locksettings store, not the
    settings provider.
 
-There is no `pm grant`, and no `WRITE_SECURE_SETTINGS`.
+No root, and no special permission to provision — the accessibility service
+toggle in step 3 is the entire setup.
 
 ## Verify
 
