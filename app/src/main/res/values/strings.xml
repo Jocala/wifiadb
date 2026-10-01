@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">wifiadb</string>
+    <string name="service_description">Re-enables Wireless debugging after reboot by tapping its Quick Settings tile. Lab use only.</string>
+</resources>

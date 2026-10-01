@@ -1,0 +1,8 @@
+keystore/env.txt
+local.properties
+.gradle/
+build/
+app/build/
+*.iml
+.DS_Store
+keystore/wifiadb.jks
